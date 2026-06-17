@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>โปรแกรมสร้าง Flow Chart โรงงาน</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --ink:#1c2128;
+  --ink-soft:#5b6472;
+  --paper:#f3f1ea;
+  --panel:#ffffff;
+  --line:#d8d4c6;
+  --line-strong:#b9b4a2;
+  --accent:#c5601f;
+  --accent-soft:#f3dcc8;
+  --grid-dot:#e3e0d4;
+  --rail-w:280px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'IBM Plex Sans Thai','IBM Plex Sans',-apple-system,sans-serif;
+  background:var(--paper);
+  color:var(--ink);
+  height:100vh;
+  overflow:hidden;
+}
+@font-face{
+  font-family:'IBM Plex Sans Thai';
+  src:local('IBM Plex Sans Thai');
+}
+
+/* ===== App shell ===== */
+#app{
+  display:grid;
+  grid-template-columns:var(--rail-w) 1fr;
+  grid-template-rows:56px 1fr;
+  height:100vh;
+}
+#topbar{
+  grid-column:1/3;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 18px;
+  background:var(--ink);
+  color:#f3f1ea;
+  border-bottom:3px solid var(--accent);
+}
+#topbar .brand{
+  display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;letter-spacing:.2px;
+}
+#topbar .brand .mark{
+  width:26px;height:26px;border:2px solid var(--accent);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:13px;font-weight:700;
+}
+#topbar .dept-title{
+  font-size:14px;color:#cfcabb;
+  border-left:1px solid #444;padding-left:14px;margin-left:4px;
+}
+#topbar .dept-title b{color:#fff;font-weight:600;}
+#topbar .actions{display:flex;gap:8px;}
+.btn{
+  font-family:inherit;
+  border:1px solid var(--line-strong);
+  background:var(--panel);
+  color:var(--ink);
+  padding:7px 13px;
+  font-size:13px;
+  border-radius:6px;
+  cursor:pointer;
+  display:flex;align-items:center;gap:6px;
+  transition:background .12s, transform .05s;
+}
+.btn:hover{background:#f7f5ee;}
+.btn:active{transform:scale(.97);}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn.primary:hover{background:#a84f17;}
+.btn.ghost{background:transparent;border-color:#555;color:#e9e6da;}
+.btn.ghost:hover{background:#2a2f38;}
+.btn.danger{color:#a4321f;border-color:#d3a08f;}
+.btn.danger:hover{background:#fbeee8;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.icon{width:14px;height:14px;display:inline-block;flex:none;}
+
+/* ===== Left rail ===== */
+#rail{
+  background:#eae7da;
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;
+  overflow-y:auto;
+}
+.rail-section{padding:14px 14px 6px;}
+.rail-section h3{
+  font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);
+  margin:0 0 10px;font-weight:600;
+}
+#dept-list{list-style:none;margin:0;padding:0 10px 10px;flex:0 0 auto;}
+#dept-list li{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 10px;border-radius:7px;cursor:pointer;
+  font-size:13.5px;color:var(--ink);margin-bottom:3px;
+  border:1px solid transparent;
+}
+#dept-list li:hover{background:#f5f3ea;}
+#dept-list li.active{background:var(--panel);border-color:var(--line-strong);font-weight:600;}
+#dept-list li .dot{width:9px;height:9px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.15);}
+#dept-list li .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#dept-list li .del{
+  opacity:0;font-size:15px;color:#9a3c25;padding:0 3px;line-height:1;
+}
+#dept-list li:hover .del{opacity:.6;}
+#dept-list li .del:hover{opacity:1;}
+#add-dept-row{padding:0 10px 14px;}
+#add-dept-row .btn{width:100%;justify-content:center;border-style:dashed;}
+
+.rail-divider{height:1px;background:var(--line);margin:4px 14px;}
+
+#shapes-section{padding:14px 14px 10px;}
+.shape-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.shape-tile{
+  background:var(--panel);
+  border:1px solid var(--line-strong);
+  border-radius:8px;
+  padding:10px 6px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  cursor:grab;
+  user-select:none;
+  font-size:11px;
+  color:var(--ink-soft);
+  text-align:center;
+}
+.shape-tile:hover{border-color:var(--accent);box-shadow:0 1px 0 rgba(0,0,0,.04);}
+.shape-tile svg{width:46px;height:30px;}
+.shape-tile span{line-height:1.25;}
+
+#legend-box{padding:10px 14px 18px;font-size:12px;color:var(--ink-soft);}
+#legend-box .legend-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+#legend-box svg{width:24px;height:16px;flex:none;}
+
+#props-section{padding:14px 14px 20px;border-top:1px solid var(--line);margin-top:auto;}
+#props-section h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin:0 0 10px;font-weight:600;}
+#props-empty{font-size:12.5px;color:var(--ink-soft);font-style:italic;}
+.prop-field{margin-bottom:10px;}
+.prop-field label{display:block;font-size:11.5px;color:var(--ink-soft);margin-bottom:4px;}
+.prop-field input[type=text], .prop-field textarea, .prop-field select{
+  width:100%;font-family:inherit;font-size:13px;padding:7px 8px;
+  border:1px solid var(--line-strong);border-radius:6px;background:#fff;color:var(--ink);
+  resize:vertical;
+}
+.prop-field textarea{min-height:54px;}
+.color-swatches{display:flex;gap:6px;flex-wrap:wrap;}
+.swatch{
+  width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;
+}
+.swatch.selected{border-color:var(--ink);}
+.prop-actions{display:flex;gap:8px;margin-top:12px;}
+
+/* ===== Canvas area ===== */
+#canvas-wrap{
+  position:relative;
+  overflow:auto;
+  background:
+    radial-gradient(circle, var(--grid-dot) 1px, transparent 1px) 0 0/22px 22px,
+    #fbfaf6;
+}
+#canvas{
+  position:relative;
+  width:2400px;
+  height:1500px;
+}
+.dept-label-watermark{
+  position:absolute;top:18px;left:18px;
+  font-size:13px;color:#b6b1a0;letter-spacing:.04em;
+  pointer-events:none;
+  user-select:none;
+}
+svg#flow-svg{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  overflow:visible;
+}
+.node{
+  cursor:grab;
+}
+.node:active{cursor:grabbing;}
+.node .shape{
+  stroke:var(--ink);
+  stroke-width:1.6;
+  transition:stroke-width .08s;
+}
+.node.selected .shape{
+  stroke:var(--accent);
+  stroke-width:2.6;
+}
+.node text{
+  font-family:'IBM Plex Sans Thai','IBM Plex Sans',sans-serif;
+  font-size:13px;
+  fill:var(--ink);
+  pointer-events:none;
+  user-select:none;
+}
+.node .sub{
+  font-size:10.5px;
+  fill:var(--ink-soft);
+}
+.port{
+  fill:#fff;
+  stroke:var(--accent);
+  stroke-width:1.4;
+  opacity:0;
+  cursor:crosshair;
+}
+.node:hover .port, .node.selected .port{opacity:1;}
+.port:hover{fill:var(--accent);}
+.edge-path{
+  fill:none;
+  stroke:#6b6457;
+  stroke-width:2;
+}
+.edge-path.selected{
+  stroke:var(--accent);
+  stroke-width:2.6;
+}
+.edge-hit{
+  fill:none;stroke:transparent;stroke-width:14;cursor:pointer;
+}
+.edge-label-bg{
+  fill:var(--paper);
+  stroke:none;
+}
+.edge-label{
+  font-family:inherit;font-size:11.5px;fill:#4a4438;
+  pointer-events:none;user-select:none;
+}
+.edge-arrow{fill:#6b6457;}
+.edge-path.selected ~ .edge-arrow, .edge-group.selected .edge-arrow{fill:var(--accent);}
+.temp-edge{
+  stroke:var(--accent);stroke-width:2;stroke-dasharray:5 4;fill:none;pointer-events:none;
+}
+.marquee{
+  fill:rgba(197,96,31,.08);stroke:var(--accent);stroke-width:1;stroke-dasharray:4 3;
+}
+
+/* edit-in-place textarea overlay */
+#inline-editor{
+  position:absolute;
+  font-family:inherit;font-size:13px;text-align:center;color:var(--ink);
+  border:1.5px dashed var(--accent);background:#fffef9;
+  resize:none;outline:none;padding:4px;border-radius:4px;
+  line-height:1.25;
+}
+
+/* empty canvas hint */
+#empty-hint{
+  position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);
+  text-align:center;color:var(--ink-soft);pointer-events:none;
+  width:360px;
+}
+#empty-hint .big{font-size:15px;color:var(--ink);margin-bottom:8px;font-weight:600;}
+#empty-hint .small{font-size:13px;line-height:1.6;}
+
+/* zoom controls */
+#zoom-controls{
+  position:fixed;right:18px;bottom:18px;
+  background:var(--panel);border:1px solid var(--line-strong);border-radius:8px;
+  display:flex;align-items:center;gap:2px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.08);
+  z-index:30;
+}
+#zoom-controls button{
+  border:none;background:transparent;width:30px;height:30px;border-radius:6px;cursor:pointer;
+  font-size:16px;color:var(--ink);
+}
+#zoom-controls button:hover{background:#f1efe6;}
+#zoom-controls .zoom-pct{font-size:12px;width:42px;text-align:center;color:var(--ink-soft);}
+
+/* toast */
+#toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:#fff;padding:10px 18px;border-radius:7px;font-size:13px;
+  opacity:0;transition:opacity .2s, transform .2s;z-index:100;pointer-events:none;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* modal */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(20,18,14,.45);
+  display:none;align-items:center;justify-content:center;z-index:200;
+}
+.modal-backdrop.open{display:flex;}
+.modal-box{
+  background:var(--panel);border-radius:10px;padding:22px 24px;width:380px;
+  box-shadow:0 8px 30px rgba(0,0,0,.25);
+}
+.modal-box h3{margin:0 0 14px;font-size:16px;}
+.modal-box input[type=text]{
+  width:100%;padding:9px 10px;border:1px solid var(--line-strong);border-radius:6px;
+  font-family:inherit;font-size:14px;margin-bottom:14px;
+}
+.modal-box .row-end{display:flex;justify-content:flex-end;gap:8px;}
+.modal-box p.hint{font-size:12.5px;color:var(--ink-soft);margin:-8px 0 14px;}
+
+@media (max-width:880px){
+  :root{--rail-w:230px;}
+  .shape-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="topbar">
+    <div class="brand">
+      <span class="mark">F</span>
+      <span>FactoryFlow Builder</span>
+      <span class="dept-title">แผนก: <b id="current-dept-name">-</b></span>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="btn-help" title="วิธีใช้งาน">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7v.5"/><circle cx="12" cy="17" r=".4" fill="currentColor"/></svg>
+        วิธีใช้
+      </button>
+      <button class="btn ghost" id="btn-save-json">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+        บันทึกไฟล์งาน
+      </button>
+      <button class="btn ghost" id="btn-load-json">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+        เปิดไฟล์งาน
+        <input type="file" id="file-input" accept=".json" style="display:none">
+      </button>
+      <button class="btn primary" id="btn-export-pdf">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/><path d="M9 14.5h1.2a1.3 1.3 0 0 0 0-2.6H9V17M13.3 17v-4.8h1a1.7 1.7 0 0 1 0 4.8h-1z"/></svg>
+        ส่งออก PDF
+      </button>
+    </div>
+  </div>
+
+  <div id="rail">
+    <div class="rail-section">
+      <h3>แผนกในโรงงาน</h3>
+    </div>
+    <ul id="dept-list"></ul>
+    <div id="add-dept-row">
+      <button class="btn" id="btn-add-dept">+ เพิ่มแผนกใหม่</button>
+    </div>
+
+    <div class="rail-divider"></div>
+
+    <div id="shapes-section">
+      <h3>สัญลักษณ์ (ลากไปวางบนพื้นที่วาด)</h3>
+      <div class="shape-grid">
+        <div class="shape-tile" draggable="true" data-shape="terminator">
+          <svg viewBox="0 0 60 36"><rect x="2" y="4" width="56" height="28" rx="14" fill="#eae6d8" stroke="#1c2128" stroke-width="1.6"/></svg>
+          <span>เริ่มต้น / สิ้นสุด</span>
+        </div>
+        <div class="shape-tile" draggable="true" data-shape="process">
+          <svg viewBox="0 0 60 36"><rect x="3" y="5" width="54" height="26" fill="#eaf0f5" stroke="#1c2128" stroke-width="1.6"/></svg>
+          <span>ขั้นตอนงาน</span>
+        </div>
+        <div class="shape-tile" draggable="true" data-shape="decision">
+          <svg viewBox="0 0 60 36"><polygon points="30,3 57,18 30,33 3,18" fill="#f7eedd" stroke="#1c2128" stroke-width="1.6"/></svg>
+          <span>จุดตัดสินใจ</span>
+        </div>
+        <div class="shape-tile" draggable="true" data-shape="iodata">
+          <svg viewBox="0 0 60 36"><polygon points="12,5 57,5 48,31 3,31" fill="#eef3e3" stroke="#1c2128" stroke-width="1.6"/></svg>
+          <span>นำเข้า/ส่งออกข้อมูล</span>
+        </div>
+        <div class="shape-tile" draggable="true" data-shape="document">
+          <svg viewBox="0 0 60 36"><path d="M3 5 H57 V27 Q45 35 30 27 Q15 19 3 27 Z" fill="#f4e8ea" stroke="#1c2128" stroke-width="1.6"/></svg>
+          <span>เอกสาร / ใบงาน</span>
+        </div>
+        <div class="shape-tile" draggable="true" data-shape="delay">
+          <svg viewBox="0 0 60 36"><path d="M5 5 H40 A13 13 0 0 1 40 31 H5 Z" fill="#efe6f2" stroke="#1c2128" stroke-width="1.6"/></svg>
+          <span>รอ / หน่วงเวลา</span>
+        </div>
+        <div class="shape-tile" draggable="true" data-shape="storage">
+          <svg viewBox="0 0 60 36"><path d="M8 6 a22 5 0 0 1 44 0 v22 a22 5 0 0 1 -44 0 z" fill="#e7eef2" stroke="#1c2128" stroke-width="1.6"/></svg>
+          <span>จัดเก็บ / สต็อก</span>
+        </div>
+        <div class="shape-tile" draggable="true" data-shape="connector">
+          <svg viewBox="0 0 60 36"><circle cx="30" cy="18" r="14" fill="#eeeeee" stroke="#1c2128" stroke-width="1.6"/></svg>
+          <span>จุดเชื่อมต่อ</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="rail-divider"></div>
+
+    <div id="legend-box">
+      <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin:0 0 10px;font-weight:600;">คำอธิบายสัญลักษณ์ (จะแสดงใน PDF)</h3>
+      <div class="legend-row"><svg viewBox="0 0 60 36"><rect x="2" y="4" width="56" height="28" rx="14" fill="#eae6d8" stroke="#1c2128" stroke-width="1.6"/></svg> จุดเริ่มต้น/สิ้นสุดกระบวนการ</div>
+      <div class="legend-row"><svg viewBox="0 0 60 36"><rect x="3" y="5" width="54" height="26" fill="#eaf0f5" stroke="#1c2128" stroke-width="1.6"/></svg> ขั้นตอนการทำงาน</div>
+      <div class="legend-row"><svg viewBox="0 0 60 36"><polygon points="30,3 57,18 30,33 3,18" fill="#f7eedd" stroke="#1c2128" stroke-width="1.6"/></svg> จุดตัดสินใจ (ใช่/ไม่ใช่)</div>
+      <div class="legend-row"><svg viewBox="0 0 60 36"><polygon points="12,5 57,5 48,31 3,31" fill="#eef3e3" stroke="#1c2128" stroke-width="1.6"/></svg> นำเข้า/ส่งออกข้อมูล</div>
+      <div class="legend-row"><svg viewBox="0 0 60 36"><path d="M3 5 H57 V27 Q45 35 30 27 Q15 19 3 27 Z" fill="#f4e8ea" stroke="#1c2128" stroke-width="1.6"/></svg> เอกสาร/ใบงาน</div>
+      <div class="legend-row"><svg viewBox="0 0 60 36"><path d="M5 5 H40 A13 13 0 0 1 40 31 H5 Z" fill="#efe6f2" stroke="#1c2128" stroke-width="1.6"/></svg> รอ/หน่วงเวลา</div>
+      <div class="legend-row"><svg viewBox="0 0 60 36"><path d="M8 6 a22 5 0 0 1 44 0 v22 a22 5 0 0 1 -44 0 z" fill="#e7eef2" stroke="#1c2128" stroke-width="1.6"/></svg> จัดเก็บ/สต็อก/คลังสินค้า</div>
+      <div class="legend-row"><svg viewBox="0 0 60 36"><circle cx="30" cy="18" r="14" fill="#eeeeee" stroke="#1c2128" stroke-width="1.6"/></svg> จุดเชื่อมต่อไปหน้าอื่น</div>
+    </div>
+
+    <div id="props-section">
+      <h3>คุณสมบัติ</h3>
+      <div id="props-content"><div id="props-empty">คลิกเลือกกล่องหรือเส้นเชื่อม เพื่อแก้ไขรายละเอียด</div></div>
+    </div>
+  </div>
+
+  <div id="canvas-wrap">
+    <div id="canvas">
+      <div class="dept-label-watermark" id="canvas-watermark"></div>
+      <svg id="flow-svg">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="7" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 Z" class="edge-arrow"></path>
+          </marker>
+          <marker id="arrowhead-selected" markerWidth="10" markerHeight="10" refX="7" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 Z" fill="#c5601f"></path>
+          </marker>
+        </defs>
+        <g id="edges-layer"></g>
+        <g id="nodes-layer"></g>
+      </svg>
+      <div id="empty-hint">
+        <div class="big">พื้นที่วาดของแผนกนี้ยังว่างอยู่</div>
+        <div class="small">ลากสัญลักษณ์จากแถบด้านซ้ายมาวางที่นี่ เพื่อเริ่มสร้าง Flow Chart<br>ดับเบิลคลิกที่กล่องเพื่อแก้ไขข้อความ<br>ลากจากจุดเล็กๆ รอบกล่อง เพื่อสร้างเส้นเชื่อมไปยังกล่องอื่น</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="zoom-controls">
+  <button id="zoom-out" title="ซูมออก">−</button>
+  <span class="zoom-pct" id="zoom-pct">100%</span>
+  <button id="zoom-in" title="ซูมเข้า">+</button>
+  <button id="zoom-reset" title="รีเซ็ตซูม">⤾</button>
+</div>
+
+<div id="toast"></div>
+
+<div class="modal-backdrop" id="modal-new-dept">
+  <div class="modal-box">
+    <h3>เพิ่มแผนกใหม่</h3>
+    <p class="hint">ตั้งชื่อแผนก แต่ละแผนกจะมีพื้นที่วาด Flow Chart แยกเป็นของตัวเอง</p>
+    <input type="text" id="new-dept-name" placeholder="เช่น แผนกผลิต, แผนกควบคุมคุณภาพ">
+    <div class="row-end">
+      <button class="btn" id="modal-cancel">ยกเลิก</button>
+      <button class="btn primary" id="modal-confirm">เพิ่มแผนก</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-help">
+  <div class="modal-box" style="width:460px;">
+    <h3>วิธีใช้งานโปรแกรม</h3>
+    <div style="font-size:13.5px;line-height:1.7;color:var(--ink);max-height:60vh;overflow-y:auto;">
+      <p><b>1. สร้างแผนก</b><br>กดปุ่ม "เพิ่มแผนกใหม่" ที่แถบด้านซ้าย ตั้งชื่อแผนก เช่น แผนกผลิต, แผนกคลังสินค้า แต่ละแผนกจะมีพื้นที่วาดของตัวเอง และจะถูกส่งออกเป็นคนละหน้าใน PDF</p>
+      <p><b>2. วางสัญลักษณ์</b><br>ลากสัญลักษณ์จากแถบด้านซ้ายมาวางบนพื้นที่วาด</p>
+      <p><b>3. แก้ไขข้อความ</b><br>ดับเบิลคลิกที่กล่อง เพื่อพิมพ์ข้อความ หรือคลิกเลือกกล่องแล้วแก้ไขในแถบ "คุณสมบัติ" ด้านซ้าย</p>
+      <p><b>4. เชื่อมเส้น</b><br>นำเมาส์ไปชี้ที่กล่อง จะเห็นจุดเล็กๆ รอบกล่อง ลากจากจุดนั้นไปยังกล่องปลายทาง เพื่อสร้างเส้นเชื่อม คลิกเส้นเชื่อมเพื่อตั้งชื่อ (เช่น "ใช่" / "ไม่ใช่")</p>
+      <p><b>5. ย้าย/ลบ</b><br>ลากกล่องเพื่อย้ายตำแหน่ง กดปุ่ม Delete หรือ Backspace เพื่อลบกล่อง/เส้นที่เลือกไว้ คลิกพื้นที่ว่างเพื่อยกเลิกการเลือก</p>
+      <p><b>6. บันทึกงาน</b><br>กด "บันทึกไฟล์งาน" เพื่อเซฟไฟล์ .json ทั้งโครงการ (ทุกแผนก) ไว้แก้ไขต่อภายหลัง แล้วกด "เปิดไฟล์งาน" เพื่อโหลดกลับมา</p>
+      <p><b>7. ส่งออก PDF</b><br>กด "ส่งออก PDF" จะได้ไฟล์ PDF ที่มีทุกแผนกแยกคนละหน้า พร้อมคำอธิบายสัญลักษณ์ในแต่ละหน้า</p>
+      <p style="color:var(--ink-soft);font-size:12.5px;">เคล็ดลับ: ใช้ปุ่ม Ctrl/Cmd + ลูกกลิ้งเมาส์ หรือปุ่มซูมมุมขวาล่าง เพื่อขยาย/ย่อพื้นที่วาด</p>
+    </div>
+    <div class="row-end" style="margin-top:14px;">
+      <button class="btn primary" id="help-close">เข้าใจแล้ว</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+var SHAPE_DEFS = {
+  terminator: {label:'จุดเริ่มต้น/สิ้นสุด', w:150, h:56, fill:'#eae6d8'},
+  process:    {label:'ขั้นตอนงาน',          w:160, h:64, fill:'#eaf0f5'},
+  decision:   {label:'ตัดสินใจ?',           w:150, h:96, fill:'#f7eedd'},
+  iodata:     {label:'ข้อมูล',               w:160, h:64, fill:'#eef3e3'},
+  document:   {label:'เอกสาร',               w:150, h:70, fill:'#f4e8ea'},
+  delay:      {label:'รอ/หน่วงเวลา',         w:150, h:60, fill:'#efe6f2'},
+  storage:    {label:'จัดเก็บ',               w:140, h:74, fill:'#e7eef2'},
+  connector:  {label:'A',                    w:64,  h:64, fill:'#eeeeee'}
+};
+
+var COLOR_OPTIONS = ['#eae6d8','#eaf0f5','#f7eedd','#eef3e3','#f4e8ea','#efe6f2','#e7eef2','#eeeeee','#fde8e8','#e3f2e6'];
+
+var state = {
+  departments: [],
+  currentDeptId: null
+};
+
+var uidCounter = 1;
+function uid(prefix){ return prefix + '_' + (uidCounter++) + '_' + Math.random().toString(36).slice(2,7); }
+
+function makeDept(name){
+  return { id: uid('dept'), name: name, nodes: [], edges: [] };
+}
+
+function currentDept(){
+  return state.departments.find(function(d){ return d.id === state.currentDeptId; });
+}
+
+/* ---------- persistence (in-memory only; export/import via file) ---------- */
+function init(){
+  state.departments.push(makeDept('แผนกผลิต'));
+  state.currentDeptId = state.departments[0].id;
+  renderDeptList();
+  renderCanvas();
+}
+
+/* ---------- toast ---------- */
+var toastTimer;
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+
+/* ---------- department list ---------- */
+function renderDeptList(){
+  var ul = document.getElementById('dept-list');
+  ul.innerHTML = '';
+  state.departments.forEach(function(d){
+    var li = document.createElement('li');
+    li.className = (d.id === state.currentDeptId) ? 'active' : '';
+    li.dataset.id = d.id;
+    var dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = d.nodes.length ? '#c5601f' : '#cfcabb';
+    var name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = d.name;
+    var del = document.createElement('span');
+    del.className = 'del';
+    del.textContent = '✕';
+    del.title = 'ลบแผนกนี้';
+    del.addEventListener('click', function(e){
+      e.stopPropagation();
+      deleteDept(d.id);
+    });
+    li.appendChild(dot); li.appendChild(name); li.appendChild(del);
+    li.addEventListener('click', function(){
+      state.currentDeptId = d.id;
+      selection = {type:null,id:null};
+      renderDeptList();
+      renderCanvas();
+      renderProps();
+    });
+    ul.appendChild(li);
+  });
+  document.getElementById('current-dept-name').textContent = currentDept() ? currentDept().name : '-';
+}
+
+function deleteDept(id){
+  if(state.departments.length <= 1){
+    showToast('ต้องมีอย่างน้อย 1 แผนก');
+    return;
+  }
+  if(!confirm('ลบแผนกนี้และ Flow Chart ทั้งหมดในแผนกนี้?')) return;
+  state.departments = state.departments.filter(function(d){ return d.id !== id; });
+  if(state.currentDeptId === id){
+    state.currentDeptId = state.departments[0].id;
+  }
+  renderDeptList();
+  renderCanvas();
+  renderProps();
+}
+
+document.getElementById('btn-add-dept').addEventListener('click', function(){
+  document.getElementById('new-dept-name').value = '';
+  document.getElementById('modal-new-dept').classList.add('open');
+  setTimeout(function(){ document.getElementById('new-dept-name').focus(); }, 50);
+});
+document.getElementById('modal-cancel').addEventListener('click', function(){
+  document.getElementById('modal-new-dept').classList.remove('open');
+});
+document.getElementById('modal-confirm').addEventListener('click', function(){
+  var name = document.getElementById('new-dept-name').value.trim();
+  if(!name){ showToast('กรุณาตั้งชื่อแผนก'); return; }
+  var d = makeDept(name);
+  state.departments.push(d);
+  state.currentDeptId = d.id;
+  document.getElementById('modal-new-dept').classList.remove('open');
+  renderDeptList();
+  renderCanvas();
+});
+document.getElementById('new-dept-name').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') document.getElementById('modal-confirm').click();
+});
+
+document.getElementById('btn-help').addEventListener('click', function(){
+  document.getElementById('modal-help').classList.add('open');
+});
+document.getElementById('help-close').addEventListener('click', function(){
+  document.getElementById('modal-help').classList.remove('open');
+});
+
+/* ---------- selection ---------- */
+var selection = {type:null, id:null}; // type: 'node' | 'edge'
+
+/* ---------- canvas rendering ---------- */
+var zoom = 1;
+function applyZoom(){
+  document.getElementById('canvas').style.transform = 'scale(' + zoom + ')';
+  document.getElementById('canvas').style.transformOrigin = '0 0';
+  document.getElementById('zoom-pct').textContent = Math.round(zoom*100) + '%';
+}
+document.getElementById('zoom-in').addEventListener('click', function(){ zoom = Math.min(2, zoom + 0.1); applyZoom(); });
+document.getElementById('zoom-out').addEventListener('click', function(){ zoom = Math.max(0.4, zoom - 0.1); applyZoom(); });
+document.getElementById('zoom-reset').addEventListener('click', function(){ zoom = 1; applyZoom(); });
+document.getElementById('canvas-wrap').addEventListener('wheel', function(e){
+  if(e.ctrlKey || e.metaKey){
+    e.preventDefault();
+    zoom = Math.min(2, Math.max(0.4, zoom + (e.deltaY < 0 ? 0.05 : -0.05)));
+    applyZoom();
+  }
+}, {passive:false});
+
+function shapeSVGPath(type, w, h){
+  switch(type){
+    case 'terminator':
+      return '<rect x="0" y="0" width="'+w+'" height="'+h+'" rx="'+(h/2)+'" ry="'+(h/2)+'"></rect>';
+    case 'process':
+      return '<rect x="0" y="0" width="'+w+'" height="'+h+'"></rect>';
+    case 'decision':
+      return '<polygon points="'+(w/2)+',0 '+w+','+(h/2)+' '+(w/2)+','+h+' 0,'+(h/2)+'"></polygon>';
+    case 'iodata':
+      var sk = w*0.12;
+      return '<polygon points="'+sk+',0 '+w+',0 '+(w-sk)+','+h+' 0,'+h+'"></polygon>';
+    case 'document':
+      return '<path d="M0,0 H'+w+' V'+(h*0.78)+' Q'+(w*0.75)+','+h+' '+(w*0.5)+','+(h*0.78)+' Q'+(w*0.25)+','+(h*0.56)+' 0,'+(h*0.78)+' Z"></path>';
+    case 'delay':
+      return '<path d="M0,0 H'+(w*0.68)+' A'+(h/2)+','+(h/2)+' 0 0 1 '+(w*0.68)+','+h+' H0 Z"></path>';
+    case 'storage':
+      var ry = h*0.13;
+      return '<path d="M0,'+ry+' C0,'+(-ry*0.3)+' '+w+','+(-ry*0.3)+' '+w+','+ry+' V'+(h-ry)+' C'+w+','+(h+ry*0.3)+' 0,'+(h+ry*0.3)+' 0,'+(h-ry)+' Z"></path>';
+    case 'connector':
+      return '<ellipse cx="'+(w/2)+'" cy="'+(h/2)+'" rx="'+(w/2)+'" ry="'+(h/2)+'"></ellipse>';
+    default:
+      return '<rect x="0" y="0" width="'+w+'" height="'+h+'"></rect>';
+  }
+}
+
+function nodePorts(node){
+  var w = node.w, h = node.h;
+  return {
+    top: {x: node.x + w/2, y: node.y},
+    bottom: {x: node.x + w/2, y: node.y + h},
+    left: {x: node.x, y: node.y + h/2},
+    right: {x: node.x + w, y: node.y + h/2}
+  };
+}
+
+function renderCanvas(){
+  var dept = currentDept();
+  var nodesLayer = document.getElementById('nodes-layer');
+  var edgesLayer = document.getElementById('edges-layer');
+  nodesLayer.innerHTML = '';
+  edgesLayer.innerHTML = '';
+  document.getElementById('canvas-watermark').textContent = dept ? ('แผนก: ' + dept.name) : '';
+  document.getElementById('empty-hint').style.display = (dept && dept.nodes.length === 0) ? 'block' : 'none';
+
+  if(!dept) return;
+
+  dept.edges.forEach(function(edge){ renderEdge(dept, edge); });
+  dept.nodes.forEach(function(node){ renderNode(dept, node); });
+}
+
+function renderNode(dept, node){
+  var ns = 'http://www.w3.org/2000/svg';
+  var g = document.createElementNS(ns, 'g');
+  g.classList.add('node');
+  if(selection.type === 'node' && selection.id === node.id) g.classList.add('selected');
+  g.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ')');
+  g.dataset.id = node.id;
+
+  var shapeWrap = document.createElementNS(ns, 'g');
+  shapeWrap.innerHTML = shapeSVGPath(node.shape, node.w, node.h);
+  var shapeEl = shapeWrap.firstElementChild;
+  shapeEl.classList.add('shape');
+  shapeEl.style.fill = node.color || SHAPE_DEFS[node.shape].fill;
+  g.appendChild(shapeEl);
+
+  var text = document.createElementNS(ns, 'text');
+  text.setAttribute('x', node.w/2);
+  text.setAttribute('y', node.sub ? (node.h/2 - 6) : (node.h/2));
+  text.setAttribute('text-anchor', 'middle');
+  text.setAttribute('dominant-baseline', 'middle');
+  wrapTextIntoTSpans(text, node.label || '', node.w - 16, node.sub ? (node.h/2 - 6) : (node.h/2));
+  g.appendChild(text);
+
+  if(node.sub){
+    var subText = document.createElementNS(ns, 'text');
+    subText.classList.add('sub');
+    subText.setAttribute('x', node.w/2);
+    subText.setAttribute('y', node.h/2 + 14);
+    subText.setAttribute('text-anchor', 'middle');
+    subText.textContent = node.sub;
+    g.appendChild(subText);
+  }
+
+  var ports = nodePorts(node);
+  Object.keys(ports).forEach(function(key){
+    var p = ports[key];
+    var circle = document.createElementNS(ns, 'circle');
+    circle.classList.add('port');
+    circle.setAttribute('cx', p.x - node.x);
+    circle.setAttribute('cy', p.y - node.y);
+    circle.setAttribute('r', 6);
+    circle.dataset.port = key;
+    circle.addEventListener('mousedown', function(e){
+      e.stopPropagation();
+      startEdgeDraw(node.id, key, e);
+    });
+    g.appendChild(circle);
+  });
+
+  g.addEventListener('mousedown', function(e){
+    if(e.target.classList.contains('port')) return;
+    e.stopPropagation();
+    selectNode(node.id);
+    startNodeDrag(node, e);
+  });
+  g.addEventListener('dblclick', function(e){
+    e.stopPropagation();
+    openInlineEditor(node);
+  });
+
+  document.getElementById('nodes-layer').appendChild(g);
+}
+
+function wrapTextIntoTSpans(textEl, label, maxWidth, centerY){
+  var words = (label || '').split(/\s+/).filter(Boolean);
+  if(words.length === 0){ textEl.textContent=''; return; }
+  var approxCharWidth = 7.2;
+  var maxChars = Math.max(4, Math.floor(maxWidth / approxCharWidth));
+  var lines = [];
+  var cur = '';
+  words.forEach(function(w){
+    var test = cur ? (cur + ' ' + w) : w;
+    if(test.length > maxChars && cur){
+      lines.push(cur);
+      cur = w;
+    } else {
+      cur = test;
+    }
+  });
+  if(cur) lines.push(cur);
+  if(lines.length > 4){
+    lines = lines.slice(0,4);
+    lines[3] = lines[3].slice(0, Math.max(0,maxChars-1)) + '…';
+  }
+  var lineHeight = 15;
+  var startY = centerY - ((lines.length-1) * lineHeight)/2;
+  textEl.textContent = '';
+  lines.forEach(function(line, i){
+    var ns = 'http://www.w3.org/2000/svg';
+    var tspan = document.createElementNS(ns, 'tspan');
+    tspan.setAttribute('x', textEl.getAttribute('x'));
+    tspan.setAttribute('y', startY + i*lineHeight);
+    tspan.textContent = line;
+    textEl.appendChild(tspan);
+  });
+}
+
+function edgeAnchorPoint(node, side){
+  var ports = nodePorts(node);
+  return ports[side];
+}
+
+function bestSides(a, b){
+  var ac = {x: a.x + a.w/2, y: a.y + a.h/2};
+  var bc = {x: b.x + b.w/2, y: b.y + b.h/2};
+  var dx = bc.x - ac.x, dy = bc.y - ac.y;
+  if(Math.abs(dx) > Math.abs(dy)){
+    return dx > 0 ? ['right','left'] : ['left','right'];
+  } else {
+    return dy > 0 ? ['bottom','top'] : ['top','bottom'];
+  }
+}
+
+function renderEdge(dept, edge){
+  var ns = 'http://www.w3.org/2000/svg';
+  var fromNode = dept.nodes.find(function(n){return n.id===edge.from;});
+  var toNode = dept.nodes.find(function(n){return n.id===edge.to;});
+  if(!fromNode || !toNode) return;
+
+  var sides = edge.fromSide && edge.toSide ? [edge.fromSide, edge.toSide] : bestSides(fromNode, toNode);
+  var p1 = edgeAnchorPoint(fromNode, sides[0]);
+  var p2 = edgeAnchorPoint(toNode, sides[1]);
+
+  var midX = (p1.x + p2.x)/2;
+  var midY = (p1.y + p2.y)/2;
+
+  var c1x = p1.x, c1y = p1.y, c2x = p2.x, c2y = p2.y;
+  if(sides[0] === 'right' || sides[0] === 'left'){ c1x = midX; } else { c1y = midY; }
+  if(sides[1] === 'right' || sides[1] === 'left'){ c2x = midX; } else { c2y = midY; }
+
+  var d = 'M '+p1.x+','+p1.y+' C '+c1x+','+c1y+' '+c2x+','+c2y+' '+p2.x+','+p2.y;
+
+  var g = document.createElementNS(ns,'g');
+  g.classList.add('edge-group');
+  if(selection.type==='edge' && selection.id===edge.id) g.classList.add('selected');
+
+  var path = document.createElementNS(ns,'path');
+  path.classList.add('edge-path');
+  if(selection.type==='edge' && selection.id===edge.id) path.classList.add('selected');
+  path.setAttribute('d', d);
+  path.setAttribute('marker-end', (selection.type==='edge' && selection.id===edge.id) ? 'url(#arrowhead-selected)' : 'url(#arrowhead)');
+  g.appendChild(path);
+
+  var hit = document.createElementNS(ns,'path');
+  hit.classList.add('edge-hit');
+  hit.setAttribute('d', d);
+  hit.addEventListener('mousedown', function(e){
+    e.stopPropagation();
+    selectEdge(edge.id);
+  });
+  g.appendChild(hit);
+
+  if(edge.label){
+    var lblX = midX, lblY = midY;
+    var bg = document.createElementNS(ns,'rect');
+    var labelWidth = Math.max(24, edge.label.length * 7 + 12);
+    bg.setAttribute('x', lblX - labelWidth/2);
+    bg.setAttribute('y', lblY - 10);
+    bg.setAttribute('width', labelWidth);
+    bg.setAttribute('height', 18);
+    bg.classList.add('edge-label-bg');
+    g.appendChild(bg);
+
+    var lbl = document.createElementNS(ns,'text');
+    lbl.classList.add('edge-label');
+    lbl.setAttribute('x', lblX);
+    lbl.setAttribute('y', lblY + 4);
+    lbl.setAttribute('text-anchor','middle');
+    lbl.textContent = edge.label;
+    g.appendChild(lbl);
+  }
+
+  document.getElementById('edges-layer').appendChild(g);
+}
+
+/* ---------- selection helpers ---------- */
+function selectNode(id){
+  selection = {type:'node', id:id};
+  renderCanvas();
+  renderProps();
+}
+function selectEdge(id){
+  selection = {type:'edge', id:id};
+  renderCanvas();
+  renderProps();
+}
+function clearSelection(){
+  selection = {type:null, id:null};
+  renderCanvas();
+  renderProps();
+}
+document.getElementById('flow-svg').addEventListener('mousedown', function(e){
+  if(e.target.id === 'flow-svg'){
+    clearSelection();
+  }
+});
+document.getElementById('canvas-wrap').addEventListener('mousedown', function(e){
+  if(e.target.id === 'canvas-wrap'){
+    clearSelection();
+  }
+});
+
+/* ---------- drag shapes from rail onto canvas ---------- */
+document.querySelectorAll('.shape-tile').forEach(function(tile){
+  tile.addEventListener('dragstart', function(e){
+    e.dataTransfer.setData('text/shape', tile.dataset.shape);
+  });
+});
+var canvasWrap = document.getElementById('canvas-wrap');
+canvasWrap.addEventListener('dragover', function(e){ e.preventDefault(); });
+canvasWrap.addEventListener('drop', function(e){
+  e.preventDefault();
+  var shapeType = e.dataTransfer.getData('text/shape');
+  if(!shapeType) return;
+  var dept = currentDept();
+  if(!dept) return;
+  var rect = canvasWrap.getBoundingClientRect();
+  var x = (e.clientX - rect.left + canvasWrap.scrollLeft) / zoom;
+  var y = (e.clientY - rect.top + canvasWrap.scrollTop) / zoom;
+  var def = SHAPE_DEFS[shapeType];
+  var node = {
+    id: uid('node'),
+    shape: shapeType,
+    x: Math.max(0, x - def.w/2),
+    y: Math.max(0, y - def.h/2),
+    w: def.w,
+    h: def.h,
+    label: def.label,
+    sub: '',
+    color: def.fill
+  };
+  dept.nodes.push(node);
+  renderCanvas();
+  selectNode(node.id);
+  renderDeptList();
+});
+
+/* ---------- node dragging ---------- */
+var dragState = null;
+function startNodeDrag(node, e){
+  dragState = {
+    node: node,
+    startX: e.clientX,
+    startY: e.clientY,
+    origX: node.x,
+    origY: node.y
+  };
+  document.addEventListener('mousemove', onNodeDragMove);
+  document.addEventListener('mouseup', onNodeDragEnd);
+}
+function onNodeDragMove(e){
+  if(!dragState) return;
+  var dx = (e.clientX - dragState.startX) / zoom;
+  var dy = (e.clientY - dragState.startY) / zoom;
+  dragState.node.x = Math.max(0, dragState.origX + dx);
+  dragState.node.y = Math.max(0, dragState.origY + dy);
+  renderCanvas();
+  selection = {type:'node', id:dragState.node.id};
+}
+function onNodeDragEnd(){
+  dragState = null;
+  document.removeEventListener('mousemove', onNodeDragMove);
+  document.removeEventListener('mouseup', onNodeDragEnd);
+  renderCanvas();
+}
+
+/* ---------- edge drawing ---------- */
+var edgeDraft = null;
+function startEdgeDraw(fromNodeId, fromSide, e){
+  var dept = currentDept();
+  var fromNode = dept.nodes.find(function(n){return n.id===fromNodeId;});
+  var p1 = edgeAnchorPoint(fromNode, fromSide);
+  edgeDraft = { fromNodeId: fromNodeId, fromSide: fromSide, p1: p1 };
+
+  var ns = 'http://www.w3.org/2000/svg';
+  var tempPath = document.createElementNS(ns,'path');
+  tempPath.classList.add('temp-edge');
+  tempPath.setAttribute('id','temp-edge-path');
+  document.getElementById('edges-layer').appendChild(tempPath);
+
+  document.addEventListener('mousemove', onEdgeDrawMove);
+  document.addEventListener('mouseup', onEdgeDrawEnd);
+}
+function svgPointFromClient(e){
+  var rect = document.getElementById('canvas').getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) / zoom,
+    y: (e.clientY - rect.top) / zoom
+  };
+}
+function onEdgeDrawMove(e){
+  if(!edgeDraft) return;
+  var p2 = svgPointFromClient(e);
+  var tempPath = document.getElementById('temp-edge-path');
+  if(tempPath){
+    tempPath.setAttribute('d', 'M '+edgeDraft.p1.x+','+edgeDraft.p1.y+' L '+p2.x+','+p2.y);
+  }
+}
+function onEdgeDrawEnd(e){
+  document.removeEventListener('mousemove', onEdgeDrawMove);
+  document.removeEventListener('mouseup', onEdgeDrawEnd);
+  var tempPath = document.getElementById('temp-edge-path');
+  if(tempPath) tempPath.remove();
+
+  if(!edgeDraft) return;
+  var targetEl = document.elementFromPoint(e.clientX, e.clientY);
+  var nodeGroup = targetEl ? targetEl.closest('.node') : null;
+  if(nodeGroup){
+    var toNodeId = nodeGroup.dataset.id;
+    if(toNodeId !== edgeDraft.fromNodeId){
+      var dept = currentDept();
+      var toSide = 'left';
+      var portEl = targetEl.classList && targetEl.classList.contains('port') ? targetEl : null;
+      if(portEl) toSide = portEl.dataset.port;
+      var edge = {
+        id: uid('edge'),
+        from: edgeDraft.fromNodeId,
+        to: toNodeId,
+        fromSide: edgeDraft.fromSide,
+        toSide: portEl ? toSide : null,
+        label: ''
+      };
+      dept.edges.push(edge);
+      renderCanvas();
+      selectEdge(edge.id);
+    }
+  }
+  edgeDraft = null;
+}
+
+/* ---------- inline text editor (double-click) ---------- */
+function openInlineEditor(node){
+  var canvas = document.getElementById('canvas');
+  var existing = document.getElementById('inline-editor');
+  if(existing) existing.remove();
+
+  var ta = document.createElement('textarea');
+  ta.id = 'inline-editor';
+  ta.value = node.label || '';
+  ta.style.left = node.x + 'px';
+  ta.style.top = node.y + 'px';
+  ta.style.width = node.w + 'px';
+  ta.style.height = (node.sub ? node.h - 18 : node.h) + 'px';
+  canvas.appendChild(ta);
+  ta.focus();
+  ta.select();
+
+  function commit(){
+    node.label = ta.value.trim() || node.label;
+    ta.remove();
+    renderCanvas();
+    renderProps();
+  }
+  ta.addEventListener('blur', commit);
+  ta.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      commit();
+    } else if(e.key === 'Escape'){
+      ta.remove();
+    }
+  });
+}
+
+/* ---------- properties panel ---------- */
+function renderProps(){
+  var dept = currentDept();
+  var container = document.getElementById('props-content');
+  container.innerHTML = '';
+
+  if(selection.type === 'node' && dept){
+    var node = dept.nodes.find(function(n){return n.id===selection.id;});
+    if(!node){ container.innerHTML = '<div id="props-empty">คลิกเลือกกล่องหรือเส้นเชื่อม เพื่อแก้ไขรายละเอียด</div>'; return; }
+
+    var labelField = document.createElement('div');
+    labelField.className = 'prop-field';
+    labelField.innerHTML = '<label>ข้อความในกล่อง</label>';
+    var ta = document.createElement('textarea');
+    ta.value = node.label;
+    ta.addEventListener('input', function(){ node.label = ta.value; renderCanvas(); });
+    labelField.appendChild(ta);
+    container.appendChild(labelField);
+
+    var subField = document.createElement('div');
+    subField.className = 'prop-field';
+    subField.innerHTML = '<label>รายละเอียดเสริม (ไม่บังคับ เช่น ผู้รับผิดชอบ)</label>';
+    var subInput = document.createElement('input');
+    subInput.type = 'text';
+    subInput.value = node.sub || '';
+    subInput.addEventListener('input', function(){ node.sub = subInput.value; renderCanvas(); });
+    subField.appendChild(subInput);
+    container.appendChild(subField);
+
+    var colorField = document.createElement('div');
+    colorField.className = 'prop-field';
+    colorField.innerHTML = '<label>สีกล่อง</label>';
+    var swatchWrap = document.createElement('div');
+    swatchWrap.className = 'color-swatches';
+    COLOR_OPTIONS.forEach(function(color){
+      var sw = document.createElement('div');
+      sw.className = 'swatch' + (node.color === color ? ' selected' : '');
+      sw.style.background = color;
+      sw.addEventListener('click', function(){
+        node.color = color;
+        renderCanvas();
+        renderProps();
+      });
+      swatchWrap.appendChild(sw);
+    });
+    colorField.appendChild(swatchWrap);
+    container.appendChild(colorField);
+
+    var sizeField = document.createElement('div');
+    sizeField.className = 'prop-field';
+    sizeField.innerHTML = '<label>ขนาดกล่อง</label>';
+    var sizeRow = document.createElement('div');
+    sizeRow.style.display = 'flex';
+    sizeRow.style.gap = '8px';
+    var wInput = document.createElement('input');
+    wInput.type = 'text'; wInput.value = node.w; wInput.style.width='50%';
+    wInput.addEventListener('change', function(){
+      var v = parseInt(wInput.value); if(v && v>=40) node.w = v; renderCanvas();
+    });
+    var hInput = document.createElement('input');
+    hInput.type = 'text'; hInput.value = node.h; hInput.style.width='50%';
+    hInput.addEventListener('change', function(){
+      var v = parseInt(hInput.value); if(v && v>=30) node.h = v; renderCanvas();
+    });
+    sizeRow.appendChild(wInput); sizeRow.appendChild(hInput);
+    sizeField.appendChild(sizeRow);
+    container.appendChild(sizeField);
+
+    var actions = document.createElement('div');
+    actions.className = 'prop-actions';
+    var delBtn = document.createElement('button');
+    delBtn.className = 'btn danger';
+    delBtn.textContent = 'ลบกล่องนี้';
+    delBtn.addEventListener('click', function(){ deleteNode(node.id); });
+    actions.appendChild(delBtn);
+    container.appendChild(actions);
+
+  } else if(selection.type === 'edge' && dept){
+    var edge = dept.edges.find(function(ed){return ed.id===selection.id;});
+    if(!edge){ container.innerHTML = '<div id="props-empty">คลิกเลือกกล่องหรือเส้นเชื่อม เพื่อแก้ไขรายละเอียด</div>'; return; }
+
+    var lblField = document.createElement('div');
+    lblField.className = 'prop-field';
+    lblField.innerHTML = '<label>ป้ายชื่อเส้นเชื่อม (เช่น ใช่ / ไม่ใช่ / ผ่าน / ไม่ผ่าน)</label>';
+    var lblInput = document.createElement('input');
+    lblInput.type = 'text';
+    lblInput.value = edge.label || '';
+    lblInput.placeholder = 'เช่น ใช่, ไม่ใช่';
+    lblInput.addEventListener('input', function(){ edge.label = lblInput.value; renderCanvas(); });
+    lblField.appendChild(lblInput);
+    container.appendChild(lblField);
+
+    var actions2 = document.createElement('div');
+    actions2.className = 'prop-actions';
+    var delBtn2 = document.createElement('button');
+    delBtn2.className = 'btn danger';
+    delBtn2.textContent = 'ลบเส้นเชื่อมนี้';
+    delBtn2.addEventListener('click', function(){ deleteEdge(edge.id); });
+    actions2.appendChild(delBtn2);
+    container.appendChild(actions2);
+
+  } else {
+    container.innerHTML = '<div id="props-empty">คลิกเลือกกล่องหรือเส้นเชื่อม เพื่อแก้ไขรายละเอียด</div>';
+  }
+}
+
+function deleteNode(id){
+  var dept = currentDept();
+  dept.nodes = dept.nodes.filter(function(n){return n.id!==id;});
+  dept.edges = dept.edges.filter(function(e){return e.from!==id && e.to!==id;});
+  clearSelection();
+  renderDeptList();
+}
+function deleteEdge(id){
+  var dept = currentDept();
+  dept.edges = dept.edges.filter(function(e){return e.id!==id;});
+  clearSelection();
+}
+
+/* ---------- keyboard delete ---------- */
+document.addEventListener('keydown', function(e){
+  var active = document.activeElement;
+  var typing = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+  if(typing) return;
+  if(e.key === 'Delete' || e.key === 'Backspace'){
+    if(selection.type === 'node') deleteNode(selection.id);
+    else if(selection.type === 'edge') deleteEdge(selection.id);
+  }
+});
+
+/* ---------- save / load project JSON ---------- */
+document.getElementById('btn-save-json').addEventListener('click', function(){
+  var data = JSON.stringify(state, null, 2);
+  var blob = new Blob([data], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'factory-flowchart-project.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('บันทึกไฟล์งานเรียบร้อย');
+});
+
+document.getElementById('btn-load-json').addEventListener('click', function(){
+  document.getElementById('file-input').click();
+});
+document.getElementById('file-input').addEventListener('change', function(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    try{
+      var data = JSON.parse(reader.result);
+      if(!data.departments || !Array.isArray(data.departments)) throw new Error('invalid');
+      state = data;
+      if(!state.currentDeptId && state.departments.length) state.currentDeptId = state.departments[0].id;
+      selection = {type:null,id:null};
+      renderDeptList();
+      renderCanvas();
+      renderProps();
+      showToast('โหลดไฟล์งานเรียบร้อย');
+    }catch(err){
+      showToast('ไม่สามารถเปิดไฟล์นี้ได้ ตรวจสอบว่าเป็นไฟล์ .json ที่บันทึกจากโปรแกรมนี้');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/* ---------- PDF export ---------- */
+function computeBounds(dept){
+  if(dept.nodes.length === 0) return {minX:0,minY:0,maxX:800,maxY:500};
+  var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  dept.nodes.forEach(function(n){
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + n.w);
+    maxY = Math.max(maxY, n.y + n.h);
+  });
+  return {minX:minX-40, minY:minY-40, maxX:maxX+40, maxY:maxY+40};
+}
+
+function buildExportSVGString(dept){
+  var bounds = computeBounds(dept);
+  var w = bounds.maxX - bounds.minX;
+  var h = bounds.maxY - bounds.minY;
+
+  var defs = '<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#6b6457"></path></marker></defs>';
+  var bg = '<rect x="'+bounds.minX+'" y="'+bounds.minY+'" width="'+w+'" height="'+h+'" fill="#fbfaf6"></rect>';
+
+  var edgesSVG = '';
+  dept.edges.forEach(function(edge){
+    var fromNode = dept.nodes.find(function(n){return n.id===edge.from;});
+    var toNode = dept.nodes.find(function(n){return n.id===edge.to;});
+    if(!fromNode || !toNode) return;
+    var sides = edge.fromSide && edge.toSide ? [edge.fromSide, edge.toSide] : bestSides(fromNode, toNode);
+    var p1 = edgeAnchorPoint(fromNode, sides[0]);
+    var p2 = edgeAnchorPoint(toNode, sides[1]);
+    var midX=(p1.x+p2.x)/2, midY=(p1.y+p2.y)/2;
+    var c1x=p1.x,c1y=p1.y,c2x=p2.x,c2y=p2.y;
+    if(sides[0]==='right'||sides[0]==='left'){c1x=midX;}else{c1y=midY;}
+    if(sides[1]==='right'||sides[1]==='left'){c2x=midX;}else{c2y=midY;}
+    var d = 'M '+p1.x+','+p1.y+' C '+c1x+','+c1y+' '+c2x+','+c2y+' '+p2.x+','+p2.y;
+    edgesSVG += '<path d="'+d+'" fill="none" stroke="#6b6457" stroke-width="2" marker-end="url(#ah)"></path>';
+    if(edge.label){
+      var lw = Math.max(24, edge.label.length*7+12);
+      edgesSVG += '<rect x="'+(midX-lw/2)+'" y="'+(midY-10)+'" width="'+lw+'" height="18" fill="#fbfaf6"></rect>';
+      edgesSVG += '<text x="'+midX+'" y="'+(midY+4)+'" text-anchor="middle" font-size="11.5" font-family="IBM Plex Sans Thai, sans-serif" fill="#4a4438">'+escapeXML(edge.label)+'</text>';
+    }
+  });
+
+  var nodesSVG = '';
+  dept.nodes.forEach(function(node){
+    var shapeMarkup = shapeSVGPath(node.shape, node.w, node.h);
+    var fillColor = node.color || SHAPE_DEFS[node.shape].fill;
+    shapeMarkup = shapeMarkup.replace(/>$/, ' fill="'+fillColor+'" stroke="#1c2128" stroke-width="1.6">');
+    var textCenterY = node.sub ? node.h/2 - 6 : node.h/2;
+    var textLines = wrapLabelLines(node.label || '', node.w - 16);
+    var lineHeight = 15;
+    var startY = textCenterY - ((textLines.length-1)*lineHeight)/2;
+    var textSVG = '<text x="'+(node.w/2)+'" text-anchor="middle" font-family="IBM Plex Sans Thai, sans-serif" font-size="13" fill="#1c2128">';
+    textLines.forEach(function(line,i){
+      textSVG += '<tspan x="'+(node.w/2)+'" y="'+(startY+i*lineHeight)+'">'+escapeXML(line)+'</tspan>';
+    });
+    textSVG += '</text>';
+    var subSVG = '';
+    if(node.sub){
+      subSVG = '<text x="'+(node.w/2)+'" y="'+(node.h/2+14)+'" text-anchor="middle" font-family="IBM Plex Sans Thai, sans-serif" font-size="10.5" fill="#5b6472">'+escapeXML(node.sub)+'</text>';
+    }
+    nodesSVG += '<g transform="translate('+node.x+','+node.y+')">'+shapeMarkup+textSVG+subSVG+'</g>';
+  });
+
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+bounds.minX+' '+bounds.minY+' '+w+' '+h+'" width="'+w+'" height="'+h+'">'+defs+bg+edgesSVG+nodesSVG+'</svg>';
+  return {svg:svg, width:w, height:h};
+}
+
+function wrapLabelLines(label, maxWidth){
+  var words = (label||'').split(/\s+/).filter(Boolean);
+  if(words.length===0) return [''];
+  var approxCharWidth = 7.2;
+  var maxChars = Math.max(4, Math.floor(maxWidth/approxCharWidth));
+  var lines=[], cur='';
+  words.forEach(function(w){
+    var test = cur ? (cur+' '+w) : w;
+    if(test.length > maxChars && cur){ lines.push(cur); cur=w; } else { cur=test; }
+  });
+  if(cur) lines.push(cur);
+  if(lines.length>4){ lines=lines.slice(0,4); lines[3]=lines[3].slice(0,Math.max(0,maxChars-1))+'…'; }
+  return lines;
+}
+
+function escapeXML(str){
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function svgStringToCanvas(svgString, targetWidth, targetHeight){
+  return new Promise(function(resolve, reject){
+    var img = new Image();
+    var svgBlob = new Blob([svgString], {type:'image/svg+xml;charset=utf-8'});
+    var url = URL.createObjectURL(svgBlob);
+    img.onload = function(){
+      var scale = 2;
+      var canvas = document.createElement('canvas');
+      canvas.width = targetWidth * scale;
+      canvas.height = targetHeight * scale;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fbfaf6';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas);
+    };
+    img.onerror = function(err){ URL.revokeObjectURL(url); reject(err); };
+    img.src = url;
+  });
+}
+
+function drawLegendOnPDF(pdf, pageWidth, startY){
+  var items = [
+    {shape:'terminator', text:'จุดเริ่มต้น/สิ้นสุดกระบวนการ'},
+    {shape:'process', text:'ขั้นตอนการทำงาน'},
+    {shape:'decision', text:'จุดตัดสินใจ (ใช่/ไม่ใช่)'},
+    {shape:'iodata', text:'นำเข้า/ส่งออกข้อมูล'},
+    {shape:'document', text:'เอกสาร/ใบงาน'},
+    {shape:'delay', text:'รอ/หน่วงเวลา'},
+    {shape:'storage', text:'จัดเก็บ/สต็อก/คลังสินค้า'},
+    {shape:'connector', text:'จุดเชื่อมต่อไปหน้าอื่น'}
+  ];
+  var marginX = 12;
+  var colWidth = (pageWidth - marginX*2) / 4;
+  var rowHeight = 11;
+  pdf.setFontSize(9);
+  pdf.setTextColor(80,80,80);
+  pdf.text('คำอธิบายสัญลักษณ์', marginX, startY);
+  startY += 5;
+  items.forEach(function(item, i){
+    var col = i % 4;
+    var row = Math.floor(i/4);
+    var x = marginX + col*colWidth;
+    var y = startY + row*rowHeight;
+    pdf.setDrawColor(28,33,40);
+    pdf.setFillColor(245,243,235);
+    pdf.setLineWidth(0.3);
+    pdf.rect(x, y-3, 8, 5, 'FD');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(50,50,50);
+    pdf.text(item.text, x+10, y+0.8);
+  });
+  return startY + Math.ceil(items.length/4)*rowHeight + 4;
+}
+
+document.getElementById('btn-export-pdf').addEventListener('click', async function(){
+  var btn = document.getElementById('btn-export-pdf');
+  var emptyDepts = state.departments.filter(function(d){return d.nodes.length===0;});
+  if(state.departments.length === emptyDepts.length){
+    showToast('ยังไม่มี Flow Chart ให้ส่งออก กรุณาสร้างกล่องก่อน');
+    return;
+  }
+  btn.disabled = true;
+  var originalText = btn.innerHTML;
+  btn.innerHTML = 'กำลังสร้าง PDF...';
+
+  try{
+    var { jsPDF } = window.jspdf;
+    var pdf = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
+    var pageWidth = pdf.internal.pageSize.getWidth();
+    var pageHeight = pdf.internal.pageSize.getHeight();
+    var first = true;
+
+    for(var i=0;i<state.departments.length;i++){
+      var dept = state.departments[i];
+      if(dept.nodes.length === 0) continue;
+      if(!first) pdf.addPage();
+      first = false;
+
+      pdf.setFontSize(16);
+      pdf.setTextColor(28,33,40);
+      pdf.text('แผนผังการทำงาน: ' + dept.name, 12, 14);
+      pdf.setDrawColor(197,96,31);
+      pdf.setLineWidth(0.8);
+      pdf.line(12, 17, pageWidth-12, 17);
+
+      var legendBottom = drawLegendOnPDF(pdf, pageWidth, pageHeight - 22);
+
+      var built = buildExportSVGString(dept);
+      var diagramTop = 24;
+      var diagramBottom = pageHeight - 30;
+      var availW = pageWidth - 24;
+      var availH = diagramBottom - diagramTop;
+      var aspect = built.width / built.height;
+      var drawW = availW, drawH = drawW/aspect;
+      if(drawH > availH){ drawH = availH; drawW = drawH*aspect; }
+      var offsetX = 12 + (availW-drawW)/2;
+      var offsetY = diagramTop + (availH-drawH)/2;
+
+      var canvas = await svgStringToCanvas(built.svg, drawW*3, drawH*3);
+      var imgData = canvas.toDataURL('image/png');
+      pdf.addImage(imgData, 'PNG', offsetX, offsetY, drawW, drawH);
+
+      pdf.setFontSize(8);
+      pdf.setTextColor(150,145,130);
+      pdf.text('หน้า ' + (i+1) + ' จาก ' + state.departments.length + '  •  สร้างโดย FactoryFlow Builder', 12, pageHeight-4);
+    }
+
+    pdf.save('factory-flowchart-' + new Date().toISOString().slice(0,10) + '.pdf');
+    showToast('ส่งออก PDF เรียบร้อยแล้ว');
+  } catch(err){
+    console.error(err);
+    showToast('เกิดข้อผิดพลาดระหว่างสร้าง PDF');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+});
+
+init();
+})();
+</script>
+</body>
+</html>
